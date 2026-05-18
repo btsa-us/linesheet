@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BTSA Line Sheet Builder</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  background: #fff;
+  color: #111;
+}
+
+/* ── TOOLBAR ── */
+#toolbar {
+  position: sticky; top: 0; z-index: 100;
+  background: #fff; color: #111;
+  border-bottom: 1.5px solid #111;
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 20px; flex-wrap: wrap;
+}
+#toolbar .logo-mark {
+  font-size: 13px; font-weight: 700;
+  letter-spacing: 0.15em; text-transform: uppercase; margin-right: 8px;
+}
+#toolbar button {
+  background: #fff; color: #111; border: 1.5px solid #111;
+  padding: 6px 14px; font-size: 12px; font-weight: 600;
+  letter-spacing: 0.05em; cursor: pointer; border-radius: 3px;
+  transition: background 0.15s;
+}
+#toolbar button:hover { background: #f0f0f0; }
+#toolbar button.primary { background: #111; color: #fff; border-color: #111; }
+#toolbar button.primary:hover { background: #333; }
+#toolbar .sep { width: 1px; height: 24px; background: #ccc; margin: 0 4px; }
+
+/* ── PAGES CONTAINER ── */
+#pages-container {
+  max-width: 860px; margin: 30px auto;
+  display: flex; flex-direction: column; gap: 40px; padding-bottom: 60px;
+}
+
+/* ── PAGE META ── */
+.page-label {
+  text-align: center; font-size: 11px; color: #888;
+  margin-bottom: 8px; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.page-actions {
+  display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 6px;
+}
+.page-actions button {
+  background: #fff; border: 1px solid #ccc;
+  padding: 4px 12px; font-size: 11px; cursor: pointer; border-radius: 3px;
+}
+.page-actions button:hover { background: #f5f5f5; }
+
+/* ── SHEET PAGE ── */
+.sheet-page {
+  background: #fff; width: 100%; aspect-ratio: 8.5 / 11;
+  position: relative; box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+  overflow: hidden; page-break-after: always;
+}
+
+/* ── SHEET INNER ── */
+.sheet-inner {
+  width: 100%; height: 100%; display: grid;
+  padding: 28px 32px 44px; gap: 18px;
+}
+.layout-2x2 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  align-content: stretch;
+}
+/* Side-by-side layouts: each item spans full width as a row */
+.layout-2x1 { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; align-content: stretch; }
+.layout-3x1 { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr 1fr; align-content: stretch; }
+.layout-1x1 { grid-template-columns: 1fr; grid-template-rows: 1fr; align-content: stretch; }
+
+/* ── 2x2 STACKED CARD ── */
+.product-card {
+  display: flex; flex-direction: column; align-items: stretch;
+  overflow: hidden; position: relative;
+}
+.product-card .style-num {
+  font-size: clamp(9px, 1.1vw, 13px); font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase; text-align: center;
+  outline: none; border: none; background: transparent;
+  width: 100%; cursor: text; padding: 2px 4px; border-radius: 2px;
+}
+.product-card .style-name {
+  font-size: clamp(8px, 0.9vw, 11px); font-style: italic; text-align: center;
+  outline: none; border: none; background: transparent;
+  width: 100%; cursor: text; padding: 1px 4px; border-radius: 2px; margin-bottom: 3px;
+}
+/* bottom info panel — mirrors .card-info spacing */
+.card-bottom {
+  display: flex; flex-direction: column;
+  padding: 8px 4px 4px; gap: 4px;
+}
+.product-card .weight-line {
+  font-size: clamp(7px, 0.8vw, 10px); color: #555;
+  outline: none; border: none; background: transparent;
+  width: 100%; cursor: text; padding: 1px 4px; border-radius: 2px;
+}
+
+/* ── SIDE-BY-SIDE CARD ── */
+.card-side {
+  display: grid; grid-template-columns: 1fr 1fr;
+  overflow: hidden; height: 100%;
+}
+.layout-1x1 .card-side { align-items: center; }
+.layout-3x1 .card-side { align-items: center; grid-template-columns: 2fr 3fr; }
+.card-info {
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 16px 20px 16px 22px; gap: 5px;
+}
+/* 3-item layout: tighter info panel so rows stay compact */
+.layout-3x1 .card-info {
+  padding: 8px 14px 8px 16px; gap: 2px;
+}
+.layout-3x1 .card-info .style-num { font-size: clamp(9px, 1vw, 11px); }
+.layout-3x1 .card-info .style-name { font-size: clamp(8px, 0.85vw, 10px); margin-bottom: 0; }
+.layout-3x1 .card-info .weight-line { font-size: clamp(7px, 0.78vw, 9px); }
+.layout-3x1 .pricing-table { font-size: clamp(6px, 0.75vw, 9px); }
+.layout-3x1 .color-table { font-size: clamp(6px, 0.75vw, 9px); }
+.layout-3x1 .notes-field { min-height: 40px; font-size: clamp(6px, 0.75vw, 9px); }
+.layout-3x1 .notes-label { font-size: clamp(6px, 0.75vw, 9px); }
+.layout-3x1 .info-divider { margin: 2px 4px; }
+.card-info .style-num {
+  font-size: clamp(11px, 1.3vw, 15px); font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  outline: none; border: none; background: transparent;
+  cursor: text; padding: 2px 4px; border-radius: 2px; width: 100%;
+}
+.card-info .style-name {
+  font-size: clamp(9px, 1vw, 12px); font-style: italic;
+  outline: none; border: none; background: transparent;
+  cursor: text; padding: 1px 4px; border-radius: 2px; width: 100%;
+  margin-bottom: 2px;
+}
+.card-info .weight-line {
+  font-size: clamp(8px, 0.9vw, 11px); color: #555;
+  outline: none; border: none; background: transparent;
+  cursor: text; padding: 1px 4px; border-radius: 2px; width: 100%;
+}
+.info-divider { height: 0.5px; background: #ddd; margin: 5px 4px; }
+
+/* always-visible editable field indicator */
+[contenteditable] {
+  background: #f9f7f2;
+  border-radius: 2px;
+  transition: background 0.15s, outline 0.15s;
+}
+[contenteditable]:hover { background: #fff8e8; outline: 1px dashed #c8a96e; }
+[contenteditable]:focus { background: #fffbe6; outline: 1.5px solid #c8a96e; }
+
+/* ── PHOTO ZONE ── */
+.photo-zone {
+  position: relative; background: #f8f8f8;
+  border: 1.5px dashed #ccc; cursor: pointer; overflow: hidden;
+  transition: border-color 0.2s, background 0.2s;
+}
+.product-card .photo-zone { width: 100%; flex: 1; min-height: 40px; }
+.card-side .photo-zone { width: 100%; height: 100%; border-radius: 0; }
+.layout-1x1 .photo-zone { max-height: 520px; margin: auto 0; align-self: center; }
+.layout-3x1 .photo-zone { aspect-ratio: 3 / 4; height: auto; align-self: center; }
+
+.photo-zone.has-image { border-color: transparent; background: transparent; }
+.photo-zone:hover { border-color: #c8a96e; background: #fffcf5; }
+.photo-zone.drag-over { border-color: #c8a96e; background: #fff8e8; }
+.photo-zone input[type=file] {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+}
+.photo-zone img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+.drop-hint {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 5px; pointer-events: none; color: #bbb;
+}
+.drop-hint svg { width: 22px; height: 22px; opacity: 0.45; }
+.drop-hint span { font-size: 9px; letter-spacing: 0.04em; text-align: center; padding: 0 6px; }
+.photo-zone.has-image .drop-hint { display: none; }
+.photo-toolbar {
+  position: absolute; top: 4px; right: 4px; display: none; gap: 4px; z-index: 10;
+}
+.photo-zone:hover .photo-toolbar,
+.photo-zone.has-image:hover .photo-toolbar { display: flex; }
+.photo-toolbar button {
+  background: rgba(0,0,0,0.65); color: #fff; border: none;
+  padding: 3px 7px; font-size: 10px; cursor: pointer; border-radius: 2px;
+}
+.photo-toolbar button:hover { background: rgba(0,0,0,0.85); }
+
+/* ── PRICING TABLE ── */
+.pricing-table {
+  width: auto; border-collapse: collapse;
+  margin-top: 3px; font-size: clamp(7px, 0.82vw, 10px);
+}
+.pricing-table td { padding: 2px 6px 2px 4px; line-height: 1.6; }
+.price-size { color: #555; white-space: nowrap; padding-right: 10px !important; }
+.price-val {
+  color: #111; font-weight: 500;
+  outline: none; border-radius: 2px; cursor: text;
+  min-width: 60px;
+}
+
+/* ── COLOR VARIANTS TABLE ── */
+.color-table {
+  width: auto; border-collapse: collapse;
+  margin-top: 3px; font-size: clamp(7px, 0.82vw, 10px);
+}
+.color-table td { padding: 2px 6px 2px 4px; line-height: 1.6; }
+.color-label { color: #555; white-space: nowrap; font-weight: 500; padding-right: 10px !important; }
+.color-val { color: #111; outline: none; border-radius: 2px; cursor: text; min-width: 80px; }
+
+/* ── NOTES FIELD ── */
+.notes-label {
+  font-size: clamp(7px, 0.82vw, 10px); color: #555;
+  font-weight: 500; padding: 0 4px;
+}
+.notes-field {
+  font-size: clamp(7px, 0.82vw, 10px); color: #111;
+  outline: none; border-radius: 2px; cursor: text;
+  width: 100%; min-height: 84px;
+  padding: 4px; line-height: 1.6;
+}
+
+/* ── PAGE FOOTER ── */
+.page-footer {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 20px; border-top: 0.5px solid #e0e0e0; background: #fff;
+  height: 36px;
+}
+.footer-client {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; cursor: text;
+  padding: 2px 6px; border-radius: 2px; color: #111;
+  min-width: 60px; outline: none;
+}
+.footer-logo img { height: 20px; width: auto; display: block; }
+
+/* ── MODAL ── */
+#modal-bg {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  z-index: 200; display: none; align-items: center; justify-content: center;
+}
+#modal-bg.open { display: flex; }
+#modal {
+  background: #fff; padding: 28px 32px; border-radius: 4px;
+  max-width: 440px; width: 90%; box-shadow: 0 8px 40px rgba(0,0,0,0.2);
+}
+#modal h3 {
+  font-size: 14px; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; margin-bottom: 16px;
+}
+.layout-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+.layout-opt {
+  border: 1.5px solid #ddd; border-radius: 3px; padding: 12px 8px;
+  cursor: pointer; text-align: center; font-size: 11px; color: #555;
+  transition: border-color 0.15s, background 0.15s;
+}
+.layout-opt:hover { border-color: #c8a96e; background: #fffcf5; color: #111; }
+.layout-opt svg { display: block; margin: 0 auto 6px; width: 48px; height: 40px; }
+.modal-btns { display: flex; justify-content: flex-end; gap: 8px; }
+.modal-btns button {
+  padding: 7px 18px; font-size: 12px; cursor: pointer;
+  border-radius: 3px; border: 1px solid #ccc; background: #fff;
+}
+
+/* ── PRINT ── */
+@media print {
+  body { background: white; }
+  #toolbar, .page-label, .page-actions, .drop-hint,
+  .photo-toolbar, .photo-zone input { display: none !important; }
+  #pages-container { margin: 0; gap: 0; padding: 0; max-width: 100%; }
+  .sheet-page { box-shadow: none; }
+  [contenteditable] { outline: none !important; background: transparent !important; }
+}
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+  <img src="https://cdn.shopify.com/s/files/1/0770/7089/3249/files/btsa-logo.png?v=1714748257" alt="BTSA" style="height:26px;width:auto;display:block;margin-right:8px;" onerror="this.style.display='none'">
+  <div class="sep"></div>
+  <button onclick="addPage()">+ Add Page</button>
+  <div class="sep"></div>
+  <button class="primary" onclick="window.print()">⎙ Print / Save PDF</button>
+</div>
+
+<div id="pages-container"></div>
+
+<div id="modal-bg">
+  <div id="modal">
+    <h3>Choose Layout</h3>
+    <div class="layout-grid">
+      <div class="layout-opt" onclick="selectLayout('layout-2x1')">
+        <svg viewBox="0 0 48 40">
+          <rect x="2" y="3" width="19" height="15" rx="1" fill="#ddd"/>
+          <rect x="23" y="3" width="23" height="15" rx="1" fill="#eee" stroke="#bbb" stroke-width="0.5"/>
+          <rect x="2" y="22" width="19" height="15" rx="1" fill="#ddd"/>
+          <rect x="23" y="22" width="23" height="15" rx="1" fill="#eee" stroke="#bbb" stroke-width="0.5"/>
+        </svg>
+        2 Items
+      </div>
+      <div class="layout-opt" onclick="selectLayout('layout-1x1')">
+        <svg viewBox="0 0 48 40">
+          <rect x="2" y="6" width="19" height="28" rx="1" fill="#ddd"/>
+          <rect x="23" y="6" width="23" height="28" rx="1" fill="#eee" stroke="#bbb" stroke-width="0.5"/>
+        </svg>
+        1 Item (Large)
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let pages = [];
+let modalTarget = null;
+const LOGO = 'https://cdn.shopify.com/s/files/1/0770/7089/3249/files/btsa-logo.png?v=1714748257';
+const COUNTS = { 'layout-2x1':2, 'layout-1x1':1 };
+
+function defCard(i) {
+  return { num:'Style #', name:'Style Name', weight:'Specs / Weight' };
+}
+
+function photoZone() {
+  return `<div class="photo-zone"
+    ondragover="event.preventDefault();this.classList.add('drag-over')"
+    ondragleave="this.classList.remove('drag-over')"
+    ondrop="handleDrop(event,this)">
+    <input type="file" accept="image/*" onchange="loadImage(this)">
+    <div class="drop-hint">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="3" y="3" width="18" height="18" rx="2"/>
+        <circle cx="8.5" cy="8.5" r="1.5"/>
+        <polyline points="21,15 16,10 5,21"/>
+      </svg>
+      <span>Click or drag photo</span>
+    </div>
+    <div class="photo-toolbar">
+      <button onclick="swapPhoto(this)">Swap</button>
+      <button onclick="clearPhoto(this)">Clear</button>
+    </div>
+  </div>`;
+}
+
+function pricingTable() {
+  return `<table class="pricing-table"><tbody>
+    <tr><td class="price-size">XS–XL</td><td class="price-val" contenteditable="true" spellcheck="false">$</td></tr>
+    <tr><td class="price-size">2XL–4XL</td><td class="price-val" contenteditable="true" spellcheck="false">$</td></tr>
+  </tbody></table>`;
+}
+
+function colorTable() {
+  return `<table class="color-table"><tbody>
+    <tr><td class="color-label">Color Variants</td><td class="color-val" contenteditable="true" spellcheck="false"></td></tr>
+  </tbody></table>`;
+}
+
+function card2x2(d) {
+  return `<div class="product-card">
+    <div class="style-num" contenteditable="true" spellcheck="false">${d.num}</div>
+    <div class="style-name" contenteditable="true" spellcheck="false">${d.name}</div>
+    ${photoZone()}
+    <div class="card-bottom">
+      <div class="weight-line" contenteditable="true" spellcheck="false">${d.weight}</div>
+      ${colorTable()}
+      <div class="info-divider"></div>
+      ${pricingTable()}
+    </div>
+  </div>`;
+}
+
+function cardSide(d) {
+  return `<div class="card-side">
+    ${photoZone()}
+    <div class="card-info">
+      <div class="style-num" contenteditable="true" spellcheck="false">${d.num || 'Style #'}</div>
+      <div class="style-name" contenteditable="true" spellcheck="false">${d.name || 'Style Name'}</div>
+      <div class="info-divider"></div>
+      <div class="weight-line" contenteditable="true" spellcheck="false">${d.weight || 'Specs / Weight'}</div>
+      ${colorTable()}
+      <div class="info-divider"></div>
+      ${pricingTable()}
+      <div class="info-divider"></div>
+      <div class="notes-label">Notes</div>
+      <div class="notes-field" contenteditable="true" spellcheck="false"></div>
+    </div>
+  </div>`;
+}
+
+function buildPage(layout, cards, idx, clientName) {
+  const count = COUNTS[layout] || 2;
+  let html = '';
+  for (let i = 0; i < count; i++) {
+    const d = cards[i] || defCard(i);
+    html += cardSide(d);
+  }
+  const w = document.createElement('div');
+  w.className = 'page-wrapper';
+  w.innerHTML = `
+    <div class="page-label">Page ${idx + 1}</div>
+    <div class="page-actions">
+      <button onclick="changePageLayout(${idx})">Layout</button>
+      <button onclick="duplicatePage(${idx})">Duplicate</button>
+      <button onclick="removePage(${idx})" style="color:#c00">Remove</button>
+    </div>
+    <div class="sheet-page">
+      <div class="sheet-inner ${layout}">${html}</div>
+      <div class="page-footer">
+        <div class="footer-client" contenteditable="true" spellcheck="false">${clientName || 'Client Name'}</div>
+        <div class="footer-logo"><img src="${LOGO}" alt="BT8A" onerror="this.style.display='none'"></div>
+      </div>
+    </div>`;
+  // restore photos and extra fields after DOM insertion (img src can be large data URIs)
+  setTimeout(() => {
+    const cardEls = w.querySelectorAll('.card-side');
+    cardEls.forEach((cardEl, ci) => {
+      const d = cards[ci];
+      if (!d) return;
+      if (d.colorVal) { const el = cardEl.querySelector('.color-val'); if (el) el.innerText = d.colorVal; }
+      if (d.price1)   { const els = cardEl.querySelectorAll('.price-val'); if (els[0]) els[0].innerText = d.price1; }
+      if (d.price2)   { const els = cardEl.querySelectorAll('.price-val'); if (els[1]) els[1].innerText = d.price2; }
+      if (d.notes)    { const el = cardEl.querySelector('.notes-field'); if (el) el.innerText = d.notes; }
+      if (d.photoSrc) {
+        const zone = cardEl.querySelector('.photo-zone');
+        if (zone) {
+          let img = zone.querySelector('img');
+          if (!img) { img = document.createElement('img'); zone.appendChild(img); }
+          img.src = d.photoSrc;
+          zone.classList.add('has-image');
+        }
+      }
+    });
+  }, 0);
+  return w;
+}
+
+/* ── SYNC DOM → pages array before any re-render ── */
+function syncFromDOM() {
+  document.querySelectorAll('.page-wrapper').forEach((wrapper, pi) => {
+    if (!pages[pi]) return;
+    const cardEls = wrapper.querySelectorAll('.card-side');
+    cardEls.forEach((cardEl, ci) => {
+      if (!pages[pi].cards[ci]) pages[pi].cards[ci] = defCard(ci);
+      const c = pages[pi].cards[ci];
+      const num = cardEl.querySelector('.style-num');
+      const name = cardEl.querySelector('.style-name');
+      const weight = cardEl.querySelector('.weight-line');
+      const colorVal = cardEl.querySelector('.color-val');
+      const priceVals = cardEl.querySelectorAll('.price-val');
+      const notes = cardEl.querySelector('.notes-field');
+      if (num) c.num = num.innerText;
+      if (name) c.name = name.innerText;
+      if (weight) c.weight = weight.innerText;
+      if (colorVal) c.colorVal = colorVal.innerText;
+      if (priceVals[0]) c.price1 = priceVals[0].innerText;
+      if (priceVals[1]) c.price2 = priceVals[1].innerText;
+      if (notes) c.notes = notes.innerText;
+      // save photo src
+      const img = cardEl.querySelector('.photo-zone img');
+      c.photoSrc = img ? img.src : null;
+    });
+    // save footer client name
+    const client = wrapper.querySelector('.footer-client');
+    if (client) pages[pi].clientName = client.innerText;
+  });
+}
+
+function renderPages() {
+  const c = document.getElementById('pages-container');
+  c.innerHTML = '';
+  pages.forEach((p, i) => c.appendChild(buildPage(p.layout, p.cards, i, p.clientName)));
+  const btn = document.createElement('div');
+  btn.style.cssText = 'text-align:center;padding:10px 0';
+  btn.innerHTML = `<button onclick="addPage()" style="padding:10px 28px;font-size:12px;background:#fff;border:1.5px dashed #ccc;cursor:pointer;border-radius:3px;letter-spacing:0.05em;color:#888;font-weight:600">+ ADD PAGE</button>`;
+  c.appendChild(btn);
+}
+
+function addPage() { syncFromDOM(); modalTarget = 'new'; document.getElementById('modal-bg').classList.add('open'); }
+function changePageLayout(i) { syncFromDOM(); modalTarget = i; document.getElementById('modal-bg').classList.add('open'); }
+function closeModal() { document.getElementById('modal-bg').classList.remove('open'); modalTarget = null; }
+
+function selectLayout(layout) {
+  const count = COUNTS[layout];
+  if (modalTarget === 'new') {
+    pages.push({ layout, cards: Array.from({length:count}, (_,i) => defCard(i)) });
+  } else if (typeof modalTarget === 'number') {
+    const ex = pages[modalTarget].cards;
+    pages[modalTarget].layout = layout;
+    pages[modalTarget].cards = Array.from({length:count}, (_,i) => ex[i] || defCard(i));
+  }
+  closeModal(); renderPages();
+}
+
+function duplicatePage(i) {
+  syncFromDOM();
+  pages.splice(i+1, 0, JSON.parse(JSON.stringify(pages[i])));
+  renderPages();
+}
+function removePage(i) {
+  if (pages.length === 1) { alert('Need at least one page.'); return; }
+  syncFromDOM();
+  pages.splice(i, 1); renderPages();
+}
+
+function loadImage(input) {
+  const zone = input.closest('.photo-zone');
+  const file = input.files[0]; if (!file) return;
+  const r = new FileReader();
+  r.onload = e => {
+    let img = zone.querySelector('img');
+    if (!img) { img = document.createElement('img'); zone.appendChild(img); }
+    img.src = e.target.result;
+    zone.classList.add('has-image'); zone.classList.remove('drag-over');
+  };
+  r.readAsDataURL(file);
+}
+function handleDrop(event, zone) {
+  event.preventDefault(); zone.classList.remove('drag-over');
+  const file = event.dataTransfer.files[0];
+  if (!file || !file.type.startsWith('image/')) return;
+  const r = new FileReader();
+  r.onload = e => {
+    let img = zone.querySelector('img');
+    if (!img) { img = document.createElement('img'); zone.appendChild(img); }
+    img.src = e.target.result; zone.classList.add('has-image');
+  };
+  r.readAsDataURL(file);
+}
+function swapPhoto(btn) { btn.closest('.photo-zone').querySelector('input[type=file]').click(); }
+function clearPhoto(btn) {
+  const z = btn.closest('.photo-zone');
+  const img = z.querySelector('img'); if (img) img.remove();
+  z.classList.remove('has-image');
+}
+
+// Init with one blank page
+pages.push({ layout:'layout-2x1', cards:[
+  {num:'Style #', name:'Style Name', weight:'Specs / Weight'},
+  {num:'Style #', name:'Style Name', weight:'Specs / Weight'},
+]});
+renderPages();
+</script>
+</body>
+</html>
