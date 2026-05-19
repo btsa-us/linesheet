@@ -279,7 +279,8 @@ body {
 @media print {
   body { background: white; }
   #toolbar, .page-label, .page-actions, .drop-hint,
-  .photo-toolbar, .photo-zone input { display: none !important; }
+  .photo-toolbar, .photo-zone input,
+  #pages-container > div:last-child { display: none !important; }
   #pages-container { margin: 0; gap: 0; padding: 0; max-width: 100%; }
   .sheet-page { box-shadow: none; }
   [contenteditable] { outline: none !important; background: transparent !important; }
