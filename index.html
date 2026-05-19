@@ -200,6 +200,11 @@ body {
 }
 .pricing-table td { padding: 2px 6px 2px 4px; line-height: 1.6; }
 .price-size { color: #555; white-space: nowrap; padding-right: 10px !important; }
+.price-col-header {
+  color: #555; font-weight: 600; font-size: clamp(6px, 0.78vw, 9px);
+  letter-spacing: 0.04em; text-transform: uppercase; padding: 0 4px 3px;
+  white-space: nowrap; border-bottom: 0.5px solid #ddd;
+}
 .price-val {
   color: #111; font-weight: 500;
   outline: none; border-radius: 2px; cursor: text;
@@ -353,8 +358,21 @@ function photoZone() {
 
 function pricingTable() {
   return `<table class="pricing-table"><tbody>
-    <tr><td class="price-size">XS–XL</td><td class="price-val" contenteditable="true" spellcheck="false">$</td></tr>
-    <tr><td class="price-size">2XL–4XL</td><td class="price-val" contenteditable="true" spellcheck="false">$</td></tr>
+    <tr>
+      <td class="price-size"></td>
+      <td class="price-col-header">Quantity</td>
+      <td class="price-col-header">Price / Unit</td>
+    </tr>
+    <tr>
+      <td class="price-size">XS–XL</td>
+      <td class="price-val" contenteditable="true" spellcheck="false"></td>
+      <td class="price-val" contenteditable="true" spellcheck="false">$</td>
+    </tr>
+    <tr>
+      <td class="price-size">2XL–4XL</td>
+      <td class="price-val" contenteditable="true" spellcheck="false"></td>
+      <td class="price-val" contenteditable="true" spellcheck="false">$</td>
+    </tr>
   </tbody></table>`;
 }
 
@@ -426,8 +444,13 @@ function buildPage(layout, cards, idx, clientName) {
       const d = cards[ci];
       if (!d) return;
       if (d.colorVal) { const el = cardEl.querySelector('.color-val'); if (el) el.innerText = d.colorVal; }
-      if (d.price1)   { const els = cardEl.querySelectorAll('.price-val'); if (els[0]) els[0].innerText = d.price1; }
-      if (d.price2)   { const els = cardEl.querySelectorAll('.price-val'); if (els[1]) els[1].innerText = d.price2; }
+      if (d.qty1 || d.price1 || d.qty2 || d.price2) {
+        const els = cardEl.querySelectorAll('.price-val');
+        if (els[0] && d.qty1)   els[0].innerText = d.qty1;
+        if (els[1] && d.price1) els[1].innerText = d.price1;
+        if (els[2] && d.qty2)   els[2].innerText = d.qty2;
+        if (els[3] && d.price2) els[3].innerText = d.price2;
+      }
       if (d.notes)    { const el = cardEl.querySelector('.notes-field'); if (el) el.innerText = d.notes; }
       if (d.photoSrc) {
         const zone = cardEl.querySelector('.photo-zone');
@@ -461,8 +484,10 @@ function syncFromDOM() {
       if (name) c.name = name.innerText;
       if (weight) c.weight = weight.innerText;
       if (colorVal) c.colorVal = colorVal.innerText;
-      if (priceVals[0]) c.price1 = priceVals[0].innerText;
-      if (priceVals[1]) c.price2 = priceVals[1].innerText;
+      if (priceVals[0]) c.qty1 = priceVals[0].innerText;
+      if (priceVals[1]) c.price1 = priceVals[1].innerText;
+      if (priceVals[2]) c.qty2 = priceVals[2].innerText;
+      if (priceVals[3]) c.price2 = priceVals[3].innerText;
       if (notes) c.notes = notes.innerText;
       // save photo src
       const img = cardEl.querySelector('.photo-zone img');
